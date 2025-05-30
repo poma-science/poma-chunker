@@ -1,0 +1,4 @@
+*.c
+
+# ...except compiled core binaries
+!src/poma_chunker/*.so

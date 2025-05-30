@@ -1,0 +1,54 @@
+[project]
+name = "poma-chunker"
+dynamic = ["version"]
+description = "Compiled chunking + context extraction engine for .poma documents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE.txt" }
+authors = [{ name = "TIGON S.L.U.", email = "info@poma.science" }]
+dependencies = ["litellm", "pandas", "tiktoken", "beautifulsoup4", "pytest", "transformers", "chardet"]
+
+[tool.setuptools.dynamic]
+version = {attr = "poma_chunker.version.__version__"}
+
+[build-system]
+requires = ["setuptools>=61", "wheel", "cython>=3.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+# Skip PyPy and musllinux builds
+skip = "pp* *-musllinux*"
+build-verbosity = 3  # Increased verbosity for better debugging
+# Common environment variables for all platforms
+environment = { CYTHON_TRACE = "0", CYTHON_ANNOTATE = "0" }
+
+# Linux specific settings
+[tool.cibuildwheel.linux]
+before-all = [
+    "yum install -y gcc-c++"
+]
+# Build for x86_64 only to avoid emulation issues
+archs = ["x86_64"]
+
+# macOS specific settings
+[tool.cibuildwheel.macos]
+before-all = [
+    "brew install libomp || echo 'libomp installation skipped'"
+]
+# macOS-specific environment variables (extends the common ones)
+environment = { CFLAGS = "-O3", LDFLAGS = "-O3" }
+# Build for x86_64 only to avoid repair issues
+archs = ["x86_64"]
+# Disable repair wheel for macOS to avoid delocate-wheel errors
+repair-wheel-command = ""
+
+# Windows specific settings
+[tool.cibuildwheel.windows]
+before-all = [
+    "pip install delvewheel"
+]
+# Build for AMD64 only to avoid cross-compilation issues
+archs = ["AMD64"]
+
+# Ensure we test the built wheels
+test-command = "python -c \"import poma_chunker; print('poma_chunker imported successfully')\""

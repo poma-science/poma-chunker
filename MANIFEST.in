@@ -1,0 +1,8 @@
+include LICENSE.txt
+include README.md
+include pyproject.toml
+include setup.py
+
+# Include native extension files
+global-include *.pyx
+global-include *.so
