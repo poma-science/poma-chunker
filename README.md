@@ -13,13 +13,11 @@ A high-performance, compiled chunking & context-extraction engine for `.poma` ar
 
 ## 🚀 Installation
 
-**From GitHub**
+**From GitHub Releases**
 
 ```bash
-pip install git+https://github.com/poma-science/poma-chunker.git
+pip install https://github.com/poma-science/poma-chunker/releases/latest/download/poma_chunker-latest.whl
 ```
-
-This will install the latest version directly from GitHub.
 
 ---
 
