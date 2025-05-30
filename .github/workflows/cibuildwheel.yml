@@ -1,0 +1,89 @@
+name: Build and Release Wheels
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Set permissions for the entire workflow
+permissions:
+  contents: write  # This is required for creating releases
+
+jobs:
+  check_files:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check_pyx.outputs.should_build }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check_pyx
+        name: Check for .pyx files
+        run: |
+          if ls src/poma_chunker/*.pyx 2>/dev/null; then
+            echo "Found .pyx files, proceeding with build"
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "No .pyx files found, skipping build"
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: check_files
+    if: needs.check_files.outputs.should_build == 'true'
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
+      CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip setuptools wheel cibuildwheel uv
+      - name: Build wheels
+        run: |
+          python -m cibuildwheel --output-dir wheelhouse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ runner.os }}
+          path: wheelhouse/*.whl
+
+  success_no_build:
+    needs: check_files
+    if: needs.check_files.outputs.should_build == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: No build needed
+        run: |
+          echo "No .pyx files found, build skipped"
+          echo "This is expected for binary-only releases"
+          exit 0
+
+  release:
+    needs: [check_files, build]
+    if: always() && needs.check_files.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      - name: Prepare assets
+        run: |
+          mkdir -p upload
+          find ./artifacts -name "*.whl" -exec cp {} upload/ \;
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: upload/*.whl
+          repository: poma-science/poma-chunker
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
